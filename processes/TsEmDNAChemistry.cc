@@ -897,17 +897,39 @@ void TsEmDNAChemistry::ConstructProcess()
 }
 
 
+#include "G4DNAMolecularStepByStepModel.hh"
+#include "G4DNAMolecularIRTModel.hh"
+#include "G4DNAIndependentReactionTimeModel.hh"
 void TsEmDNAChemistry::ConstructTimeStepModel(G4DNAMolecularReactionTable* reactionTable)
 {
-    G4VDNAReactionModel* reactionRadiusComputer =
-    new G4DNASmoluchowskiReactionModel();
-    reactionTable->PrintTable(reactionRadiusComputer);
-    
-    G4DNAMolecularStepByStepModel* stepByStep =
-    new G4DNAMolecularStepByStepModel();
-    stepByStep->SetReactionModel(reactionRadiusComputer);
-    
-    RegisterTimeStepModel(stepByStep, 0);
+    if ( !fPm->ParameterExists("Ch/RegisterTimeStepModel")) {
+        G4VDNAReactionModel* reactionRadiusComputer =
+        new G4DNASmoluchowskiReactionModel();
+        reactionTable->PrintTable(reactionRadiusComputer);
+        
+        G4DNAMolecularStepByStepModel* stepByStep =
+        new G4DNAMolecularStepByStepModel();
+        stepByStep->SetReactionModel(reactionRadiusComputer);
+        
+        RegisterTimeStepModel(stepByStep, 0);
+    } else {
+        G4String timeStepModel = fPm->GetStringParameter("Ch/RegisterTimeStepModel");
+        G4StrUtil::to_lower(timeStepModel);
+        if (timeStepModel == "g4irt") {
+            RegisterTimeStepModel(new G4DNAMolecularIRTModel(), 0);
+            G4cout << "-- Registering G4IRT " << G4endl;
+        } else if (timeStepModel == "g4stepbystep") {
+            RegisterTimeStepModel(new G4DNAMolecularStepByStepModel(), 0);
+            G4cout << "-- Registering G4StepByStep " << G4endl;
+        } else if (timeStepModel == "g4irtsync") {
+            RegisterTimeStepModel(new G4DNAIndependentReactionTimeModel(), 0);
+            G4cout << "-- Registering G4IRTSync " << G4endl;
+        } else {
+            G4cerr << "Error, time step model " << timeStepModel << " was not found." << G4endl;
+            G4cerr << "Options are: G4IRT, G4StepByStep and G4IRTSync" << G4endl;
+            fPm->AbortSession(1);
+        }
+    }
 }
 
 
